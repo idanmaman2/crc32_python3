@@ -11,8 +11,6 @@ def parse_dword(x):
     return int(x, 0) & 0xFFFFFFFF
 
 def reverseBits(x):
-    # http://graphics.stanford.edu/~seander/bithacks.html#ReverseParallel
-    # http://stackoverflow.com/a/20918545
     x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1)
     x = ((x & 0x33333333) << 2) | ((x & 0xCCCCCCCC) >> 2)
     x = ((x & 0x0F0F0F0F) << 4) | ((x & 0xF0F0F0F0) >> 4)
@@ -133,42 +131,15 @@ class Matrix:
         return Matrix(tuple(map(self.multiply_vector, matrix.matrix)))
 
 def combine(c1, c2, l2, n, poly):
-    # The effect of feeding zero bits into the CRC32 state machine can be
-    # represented by matrix multiplication, allowing exponentiation-by-squaring.
-    #
-    # https://github.com/madler/zlib/blob/v1.2.11/crc32.c#L341-L434
-    # https://stackoverflow.com/a/23126768
-    #
-    # Let C(a) be pure CRC32, and let Z be 32 bits such that
-    # C(Z) = 0xffffffff and CRC32(A) = ~C(ZA).
-    #
-    # Let a be A replaced with zero bits but have the same length as A.
-    #
-    # CRC32(AB) = ~C(ZAB) = ~(C(ZAb ^ aZb ^ aZB)) = ~(C(ZAb) ^ C(aZb) ^ C(aZB))
-    #   = ~C(ZAb) ^ ~C(Zb) ^ ~C(ZB)
-    #   = ~(~C(ZAb) ^ C(Zb)) ^ CRC32(B)
-    #
-    # The first term is ~CRC32(Ab), except the CRC register is negated
-    # after A before B.
-
     m = Matrix.zero_operator(poly)
     m = m.mul(m)
     m = m.mul(m)
-
     M = Matrix.identity()
     while l2:
         m = m.mul(m)
         if l2 & 1:
             M = m.mul(M)
         l2 >>= 1
-
-    # M is now the matrix that represents appending l2 zero bytes.
-    #
-    # The effect of matrix multiplication and adding is an affine transform,
-    # and homogeneous coordinates allows exponentiation-by-squaring.
-    #
-    # https://stackoverflow.com/a/59239761
-
     b = c2
     while True:
         if n & 1:
