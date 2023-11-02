@@ -60,7 +60,6 @@ def init_tables(poly = 0xEDB88320 , reverse=True):
                     found.append(j)
             table_reverse.append(tuple(found))
 
-
 def calc(data, accum=0):
     if not all(map(lambda x : x in permitted_characters  , data )) : 
         raise ValueError("Invalid data - use only permitted_characters chars " ) 
@@ -86,7 +85,6 @@ def rewind(data ,accum = 0 ):
             else:
                 solutions.add((~prevCRC) & 0xFFFFFFFF)
     return solutions
-
 
 def findReverse(desired, accum = 0 ):
     solutions = set()
@@ -122,12 +120,9 @@ def combine(c1, c2, l2, n, poly):
     while True:
         if n & 1:
             c1 = M.multiply_vector(c1, b)
-
         n >>= 1
         if not n:
             break
-
         b = M.multiply_vector(b, b)
         M = M.mul(M)
-
     return c1
