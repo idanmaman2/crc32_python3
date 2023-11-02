@@ -4,36 +4,43 @@ import sys
 import string 
 import itertools
 
+table = []
+table_reverse = []
 permitted_characters = set(
     map(ord, string.ascii_letters + string.digits + '_')) 
 
-def parse_dword(x):
-    return int(x, 0) & 0xFFFFFFFF
+class Matrix:
+    def __init__(self, matrix):
+        # column vectors
+        self.matrix = matrix
 
-def reverseBits(x):
-    x = ((x & 0x55555555) << 1) | ((x & 0xAAAAAAAA) >> 1)
-    x = ((x & 0x33333333) << 2) | ((x & 0xCCCCCCCC) >> 2)
-    x = ((x & 0x0F0F0F0F) << 4) | ((x & 0xF0F0F0F0) >> 4)
-    x = ((x & 0x00FF00FF) << 8) | ((x & 0xFF00FF00) >> 8)
-    x = ((x & 0x0000FFFF) << 16) | ((x & 0xFFFF0000) >> 16)
-    return x & 0xFFFFFFFF
+    @staticmethod
+    def identity():
+        return Matrix(tuple(1 << i for i in range(32)))
+
+    @staticmethod
+    def zero_operator(poly):
+        m = [poly]
+        n = 1
+        for _ in range(31):
+            m.append(n)
+            n <<= 1
+        return Matrix(tuple(m))
+
+    def multiply_vector(self, v, s = 0):
+        for c in self.matrix:
+            s ^= c & -(v & 1)
+            v >>= 1
+            if not v:
+                break
+        return s
+
+    def mul(self, matrix):
+        return Matrix(tuple(map(self.multiply_vector, matrix.matrix)))
 
 def reciprocal(poly):
     ''' Return the reciprocal polynomial of a reversed (lsbit-first) polynomial. '''
     return poly << 1 & 0xffffffff | 1
-
-def ranges(i):
-    for kg in itertools.groupby(enumerate(i), lambda x: x[1] - x[0]):
-        g = list(kg[1])
-        yield g[0][1], g[-1][1]
-
-
-def rangess(i):
-    return ', '.join(map(lambda x: '[{0},{1}]'.format(*x), ranges(i)))
-
-table = []
-table_reverse = []
-
 
 def init_tables(poly = 0xEDB88320 , reverse=True):
     global table, table_reverse
@@ -55,12 +62,13 @@ def init_tables(poly = 0xEDB88320 , reverse=True):
 
 
 def calc(data, accum=0):
+    if not all(map(lambda x : x in permitted_characters  , data )) : 
+        raise ValueError("Invalid data - use only permitted_characters chars " ) 
     accum = ~accum
     for b in data:
         accum = table[(accum ^ b) & 0xFF] ^ ((accum >> 8) & 0x00FFFFFF)
     accum = ~accum
     return accum & 0xFFFFFFFF
-
 
 def rewind(data ,accum = 0 ):
     if not data:
@@ -99,36 +107,6 @@ def findReverse(desired, accum = 0 ):
             else:
                 stack.append(((node[0] ^ table[j]) << 8,) + node[1:] + (j,))
     return list(map(bytearray , solutions)) 
-
-
-class Matrix:
-    def __init__(self, matrix):
-        # column vectors
-        self.matrix = matrix
-
-    @staticmethod
-    def identity():
-        return Matrix(tuple(1 << i for i in range(32)))
-
-    @staticmethod
-    def zero_operator(poly):
-        m = [poly]
-        n = 1
-        for _ in range(31):
-            m.append(n)
-            n <<= 1
-        return Matrix(tuple(m))
-
-    def multiply_vector(self, v, s = 0):
-        for c in self.matrix:
-            s ^= c & -(v & 1)
-            v >>= 1
-            if not v:
-                break
-        return s
-
-    def mul(self, matrix):
-        return Matrix(tuple(map(self.multiply_vector, matrix.matrix)))
 
 def combine(c1, c2, l2, n, poly):
     m = Matrix.zero_operator(poly)
